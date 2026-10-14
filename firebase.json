@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      "*.class",
+      "*.sql",
+      "package.json",
+      "get-link.bat"
+    ],
+    "site": "finance-d2f20"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

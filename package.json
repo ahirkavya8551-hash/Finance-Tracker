@@ -1,0 +1,23 @@
+{
+  "name": "finance-tracker",
+  "version": "1.0.0",
+  "description": "A secure personal finance tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build:js": "terser app.js -o dist/app.js --compress --mangle",
+    "build:css": "cleancss -o dist/styles.css styles.css",
+    "build:html": "copy /Y index.html dist\\index.html && copy /Y transactions.html dist\\transactions.html && copy /Y transactions.js dist\\transactions.js",
+    "build": "if not exist dist mkdir dist && copy bg.jpg dist\\bg.jpg && copy firebase-config.js dist\\firebase-config.js && npm run build:js && npm run build:css && npm run build:html",
+    "deploy": "npm run build && firebase deploy"
+  },
+  "dependencies": {
+    "firebase": "^10.7.0",
+    "puppeteer": "^25.1.0"
+  },
+  "devDependencies": {
+    "clean-css-cli": "^5.6.3",
+    "terser": "^5.48.0"
+  }
+}

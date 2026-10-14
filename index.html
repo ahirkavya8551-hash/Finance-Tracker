@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker | Secure Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK (ensure app loads before service SDKs) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+        const savedTheme = localStorage.getItem('ft_theme') || 'dark';
+        if (savedTheme === 'light') {
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.classList.add('light-mode');
+                const btn = document.getElementById('themeToggleBtn');
+                if (btn) btn.innerText = '🌙';
+            });
+        }
+    </script>
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div id="login-wrapper" class="login-wrapper">
+        <div id="login-container" class="glass-panel">
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+                <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+
+            <!-- SIGN IN CONTENT -->
+            <div id="signin-content">
+                <h1>Welcome Back</h1>
+                <p>Log in to keep your wealth on track.</p>
+                
+                <div class="input-group">
+                    <label>Email or Login ID</label>
+                    <input type="text" id="loginEmail" placeholder="you@example.com or username" autocomplete="username" onkeydown="if(event.key==='Enter') firebaseLogin()">
+                </div>
+                
+                <div class="input-group">
+                    <label>Password</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') firebaseLogin()">
+                        <button type="button" class="toggle-password" onclick="togglePassword('loginPass')">Show</button>
+                    </div>
+                </div>
+
+                <div class="login-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Remember me</span>
+                    </label>
+                    <a href="javascript:void(0)" class="forgot-link" onclick="firebaseResetPassword()">Forgot Password?</a>
+                </div>
+
+                <button type="button" id="loginBtn" onclick="firebaseLogin()">Sign In</button>
+            </div>
+
+            <!-- SIGN UP CONTENT -->
+            <div id="signup-content" style="display: none;">
+                <h1>Create Account</h1>
+                <p>Join us and take control of your finances.</p>
+                
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="username" onkeydown="if(event.key==='Enter') firebaseSignup()">
+                </div>
+
+                <div class="input-group">
+                    <label>Login ID (Unique)</label>
+                    <input type="text" id="signupLoginId" placeholder="e.g. yash_07" autocomplete="off" onkeydown="if(event.key==='Enter') firebaseSignup()">
+                </div>
+                
+                <div class="input-group">
+                    <label>Password</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="signupPass" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter') firebaseSignup()">
+                        <button type="button" class="toggle-password" onclick="togglePassword('signupPass')">Show</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Confirm Password</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="signupPassConfirm" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter') firebaseSignup()">
+                        <button type="button" class="toggle-password" onclick="togglePassword('signupPassConfirm')">Show</button>
+                    </div>
+                </div>
+
+                <button type="button" id="signupBtn" onclick="firebaseSignup()">Sign Up</button>
+            </div>
+
+            <p id="authError" class="error" style="color: #ef4444 !important; margin-top: 16px; font-size: 0.9rem; text-align: center;"></p>
+
+            <div class="social-login">
+                <p>Or continue with</p>
+                <div class="social-icons">
+                    <div class="social-btn google-btn" onclick="signInWithGoogle()" title="Sign in with Google">G</div>
+                    <div class="social-btn" title="Apple">A</div>
+                    <div class="social-btn" title="GitHub">H</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD (Hidden initially) -->
+    <div id="dashboard-container" style="display: none;">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="logo">💸 Finance Tracker</div>
+                <nav class="nav-links">
+                    <a href="index.html" class="nav-link active">📊 Dashboard</a>
+                    <a href="transactions.html" class="nav-link">💳 Transactions</a>
+                </nav>
+            </div>
+            <div class="header-actions">
+                <button id="themeToggleBtn" class="btn-theme" onclick="toggleTheme()" title="Toggle Theme">☀️</button>
+                <button id="notiToggleBtn" class="btn-theme noti-btn" onclick="toggleNotifications()" title="Notifications">
+                    🔔<span id="notiBadge" class="noti-badge" style="display: none;">0</span>
+                </button>
+                <button class="btn-primary" onclick="openAddModal()">+ Add Transaction</button>
+                <button class="btn-profile" onclick="toggleProfile()">👤 Profile</button>
+                <button class="logout" onclick="logout()">Log Out</button>
+            </div>
+        </header>
+
+        <section id="profile-section" class="glass-panel" style="display: none; margin-bottom: 32px;">
+            <div class="profile-header">
+                <div class="avatar-large">👤</div>
+                <div class="profile-info">
+                    <h2 id="profFullName">Admin User</h2>
+                    <p id="profEmail">admin@example.com</p>
+                    <p class="prof-login-id">🔑 Login ID: <span id="profLoginId">admin</span></p>
+                </div>
+                <button class="btn-edit-profile" onclick="enableProfileEdit()">✏️ Edit Profile</button>
+            </div>
+            
+            <!-- Profile Info Edit -->
+            <div id="profile-edit-form" style="display: none; margin-top: 24px; border-top: 1px solid var(--glass-border); padding-top: 24px;">
+                <h4 style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Personal Info</h4>
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>Full Name</label>
+                        <input type="text" id="editProfName">
+                    </div>
+                    <div class="input-group">
+                        <label>Email Address</label>
+                        <input type="email" id="editProfEmail">
+                    </div>
+                    <div class="input-group">
+                        <label>Currency Symbol</label>
+                        <select id="editProfCurrency">
+                            <option value="₹">₹ (INR)</option>
+                            <option value="$">$ (USD)</option>
+                            <option value="€">€ (EUR)</option>
+                            <option value="£">£ (GBP)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Monthly Savings Goal</label>
+                        <input type="number" id="editProfGoal">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button onclick="saveProfile()" class="btn-save">💾 Update Profile</button>
+                    <button onclick="disableProfileEdit()" class="btn-cancel">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Change Credentials -->
+            <div style="margin-top: 24px; border-top: 1px solid var(--glass-border); padding-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">🔐 Login Credentials</h4>
+                    <button class="btn-edit-profile" onclick="toggleCredentialForm()">Change ID / Password</button>
+                </div>
+
+                <div id="credential-form" style="display: none; margin-top: 20px;">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label>New User ID</label>
+                            <input type="text" id="newLoginId" placeholder="Enter new User ID" autocomplete="off">
+                        </div>
+                        <div class="input-group">
+                            <label>Current Password (required)</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="currentPassVerify" placeholder="Enter current password" autocomplete="current-password">
+                                <button type="button" class="toggle-password" onclick="toggleCredPass('currentPassVerify', this)">Show</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>New Password</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="newPassword" placeholder="Leave blank to keep current" autocomplete="new-password">
+                                <button type="button" class="toggle-password" onclick="toggleCredPass('newPassword', this)">Show</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Confirm New Password</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="confirmPassword" placeholder="Repeat new password" autocomplete="new-password">
+                                <button type="button" class="toggle-password" onclick="toggleCredPass('confirmPassword', this)">Show</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="credError" style="color: #ef4444; font-size: 0.9rem; margin-top: 8px;"></p>
+                    <div class="modal-actions">
+                        <button onclick="saveCredentials()" class="btn-save">🔐 Save Credentials</button>
+                        <button onclick="toggleCredentialForm()" class="btn-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-stats" style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="stat-box glass-panel">
+                    <h3>Current Savings Goal</h3>
+                    <h2 id="profGoalVal">₹ 0</h2>
+                </div>
+                <div class="stat-box glass-panel">
+                    <h3>Preferred Currency</h3>
+                    <h2 id="profCurrencyVal">₹</h2>
+                </div>
+            </div>
+        </section>
+
+        <div id="main-dashboard-content">
+            <section id="alerts" class="alerts" style="display: none;">
+                <div style="font-size: 1.5rem; display: flex; align-items: center; justify-content: center;">⚠️</div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 6px 0; font-size: 1rem; font-weight: 600;">Upcoming Payments & Reminders</h4>
+                    <ul id="alerts-list" style="margin: 0; padding-left: 20px; font-size: 0.95rem; line-height: 1.5; list-style-type: disc;">
+                        <!-- Dynamically populated -->
+                    </ul>
+                </div>
+            </section>
+
+            <!-- QUICK STATS SUMMARY BOX -->
+            <div class="quick-stats-box glass-panel" id="quickStatsBox">
+                <div class="qs-header">
+                    <span class="qs-title">📊 Financial Snapshot</span>
+                    <a href="transactions.html" class="qs-view-all-btn">View All Transactions →</a>
+                </div>
+                <div class="qs-grid">
+                    <div class="qs-item qs-income">
+                        <span class="qs-icon">💰</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Total Income</span>
+                            <span class="qs-value" id="qsIncome">₹ 0</span>
+                        </div>
+                    </div>
+                    <div class="qs-item qs-deposit">
+                        <span class="qs-icon">🏦</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Total Deposits</span>
+                            <span class="qs-value" id="qsDeposit">₹ 0</span>
+                        </div>
+                    </div>
+                    <div class="qs-item qs-emi">
+                        <span class="qs-icon">📅</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Monthly EMI</span>
+                            <span class="qs-value" id="qsEmi">₹ 0</span>
+                        </div>
+                    </div>
+                    <div class="qs-item qs-expense">
+                        <span class="qs-icon">💸</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Total Expenses</span>
+                            <span class="qs-value" id="qsExpense">₹ 0</span>
+                        </div>
+                    </div>
+                    <div class="qs-item qs-savings">
+                        <span class="qs-icon">✨</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Net Savings</span>
+                            <span class="qs-value" id="qsSavings">₹ 0</span>
+                        </div>
+                    </div>
+                    <div class="qs-item qs-count">
+                        <span class="qs-icon">🧾</span>
+                        <div class="qs-info">
+                            <span class="qs-label">Total Records</span>
+                            <span class="qs-value" id="qsCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="charts-wrapper" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <section class="chart-section glass-panel" style="margin-bottom: 0;">
+                    <div class="chart-header">
+                        <h3>Distribution Overview</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </section>
+                <section class="chart-section glass-panel" style="margin-bottom: 0;">
+                    <div class="chart-header">
+                        <h3>Monthly Summary</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </section>
+                <section class="chart-section glass-panel" style="margin-bottom: 0;">
+                    <div class="chart-header">
+                        <h3>Savings Progress</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="savingsChart"></canvas>
+                    </div>
+                </section>
+            </div>
+    
+            <section class="cards" style="display: none;">
+                <div class="card glass-panel balance-card">
+                    <h3>Available Balance</h3>
+                    <h2 id="availableBalance">₹ 0</h2>
+                </div>
+                <div class="card glass-panel income-card">
+                    <h3>Total Income</h3>
+                    <h2 id="totalIncome">₹ 0</h2>
+                </div>
+                <div class="card glass-panel emi-card">
+                    <h3>Total EMIs (Monthly)</h3>
+                    <h2 id="totalEmi">₹ 0</h2>
+                </div>
+                <div class="card glass-panel expense-card">
+                    <h3>Total Expenses</h3>
+                    <h2 id="totalExpense">₹ 0</h2>
+                </div>
+                <div class="card glass-panel savings-card">
+                    <h3>Net Savings</h3>
+                    <h2 id="totalSavings">₹ 0</h2>
+                </div>
+                <div class="card glass-panel pending-card">
+                    <h3>Total Pending Debt</h3>
+                    <h2 id="totalPending">₹ 0</h2>
+                </div>
+            </section>
+    
+            <!-- Filter Bar (Hidden on Dashboard) -->
+            <div class="filter-bar glass-panel" style="display: none;">
+                <span class="filter-label">🔍 Filter by Day:</span>
+                <input type="text" id="filterDate" placeholder="e.g. 03" onkeyup="renderTable()" style="width:120px; padding:8px 12px; font-size:0.95rem;">
+                <div class="filter-actions">
+                    <button type="button" id="filterAllBtn" class="filter-btn filter-btn-active" onclick="setDateFilter('')">All</button>
+                    <button type="button" id="filterClearBtn" class="filter-btn" onclick="setDateFilter('')">Clear</button>
+                </div>
+            </div>
+
+            <!-- INCOME TABLE (Hidden on Dashboard) -->
+            <section class="table-container glass-panel table-income" style="display: none;">
+                <div class="table-header">
+                    <h3 class="tbl-income-title">💰 Income</h3>
+                    <span id="incomeCount" class="tbl-badge badge-income-count">0 records</span>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Method</th>
+                                <th>Reason</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody"><tr><td colspan="6" class="empty-row">No income records yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- DEPOSIT TABLE (Hidden on Dashboard) -->
+            <section class="table-container glass-panel table-deposit" style="display: none;">
+                <div class="table-header">
+                    <h3 class="tbl-deposit-title">🏦 Deposits</h3>
+                    <span id="depositCount" class="tbl-badge badge-deposit-count">0 records</span>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Method</th>
+                                <th>Reason</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="depositTableBody"><tr><td colspan="6" class="empty-row">No deposit records yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- EMI TABLE (Hidden on Dashboard) -->
+            <section class="table-container glass-panel table-emi" style="display: none;">
+                <div class="table-header">
+                    <h3 class="tbl-emi-title">📅 EMI Payments</h3>
+                    <span id="emiCount" class="tbl-badge badge-emi-count">0 records</span>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Method</th>
+                                <th>Monthly (₹)</th>
+                                <th>Pending Months</th>
+                                <th>Total Pending</th>
+                                <th>Last EMI Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emiTableBody"><tr><td colspan="7" class="empty-row">No EMI records yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- EXPENSE TABLE (Hidden on Dashboard) -->
+            <section class="table-container glass-panel table-expense" style="display: none;">
+                <div class="table-header">
+                    <h3 class="tbl-expense-title">💸 Expenses</h3>
+                    <span id="expenseCount" class="tbl-badge badge-expense-count">0 records</span>
+                </div>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Method</th>
+                                <th>Reason</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody"><tr><td colspan="6" class="empty-row">No expense records yet.</td></tr></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- ADD TRANSACTION MODAL -->
+    <div id="add-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel">
+            <h3>Add New Transaction</h3>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>Type</label>
+                    <select id="tType">
+                        <option value="Income">Income (+)</option>
+                        <option value="Deposit">Deposit (+)</option>
+                        <option value="EMI">EMI (-)</option>
+                        <option value="Expense">Expense (-)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Payment Method</label>
+                    <select id="tMethod">
+                        <option value="Bank">Bank</option>
+                        <option value="Cash">Cash</option>
+                        <option value="GPay">GPay</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="input-group full-width">
+                    <label>Transaction Name</label>
+                    <input type="text" id="tName" placeholder="e.g. Salary / HDFC EMI">
+                </div>
+                <div class="input-group">
+                    <label>Amount (₹)</label>
+                    <input type="number" id="tAmount" placeholder="0.00">
+                </div>
+                <div class="input-group">
+                    <label>Date (Day / DD)</label>
+                    <input type="text" id="tDate" placeholder="e.g. 05">
+                </div>
+                <div class="input-group full-width">
+                    <label>Reason / Note</label>
+                    <input type="text" id="tReason" placeholder="Brief description">
+                </div>
+                <div class="input-group" id="tPendingWrapper">
+                    <label>Pending Months (EMI Only)</label>
+                    <input type="number" id="tPending" value="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button onclick="addTransaction()" class="btn-save">Verify & Add</button>
+                <button onclick="closeAddModal()" class="btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div id="edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel">
+            <h3>Edit Transaction</h3>
+            <input type="hidden" id="editIndex">
+            <div class="input-group">
+                <label>Type</label>
+                <select id="editType">
+                    <option value="Income">Income</option>
+                    <option value="Deposit">Deposit</option>
+                    <option value="EMI">EMI</option>
+                    <option value="Expense">Expense</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Payment Method</label>
+                <select id="editMethod">
+                    <option value="Bank">Bank</option>
+                    <option value="Cash">Cash</option>
+                    <option value="GPay">GPay</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="editName">
+            </div>
+            <div class="input-group">
+                <label>Amount (₹)</label>
+                <input type="number" id="editAmount">
+            </div>
+            <div class="input-group">
+                <label>Date (Day)</label>
+                <input type="text" id="editDate">
+            </div>
+            <div class="input-group">
+                <label>Reason</label>
+                <input type="text" id="editReason">
+            </div>
+            <div class="input-group">
+                <label>Pending Months (EMI Only)</label>
+                <input type="number" id="editPending">
+            </div>
+            <div class="modal-actions">
+                <button onclick="saveEdit()" class="btn-save">Save Changes</button>
+                <button onclick="closeEdit()" class="btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.88); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center; flex-direction:column; gap:20px;">
+        <div class="spinner"></div>
+        <p style="color:#94a3b8; font-size:1rem; font-weight:500;">Loading your finances...</p>
+    </div>
+
+    <!-- Notification Drawer -->
+    <div id="noti-drawer" class="noti-drawer glass-panel" style="display: none;">
+        <div class="drawer-header">
+            <h3>🔔 Notification Center</h3>
+            <button class="btn-close-drawer" onclick="toggleNotifications()">✖</button>
+        </div>
+        <div class="drawer-tabs">
+            <button class="drawer-tab active" id="tab-noti-alerts" onclick="switchDrawerTab('alerts')">Alerts</button>
+            <button class="drawer-tab" id="tab-noti-reminders" onclick="switchDrawerTab('reminders')">Reminders</button>
+            <button class="drawer-tab" id="tab-noti-logs" onclick="switchDrawerTab('logs')">Recent Logs</button>
+        </div>
+
+        <!-- ALERTS TAB CONTENT -->
+        <div id="drawer-alerts-content" class="drawer-content">
+            <!-- Dynamically populated drawer alerts -->
+        </div>
+
+        <!-- REMINDERS TAB CONTENT -->
+        <div id="drawer-reminders-content" class="drawer-content" style="display: none;">
+            <div class="add-reminder-container">
+                <h4>Add Custom Reminder</h4>
+                <div class="reminder-inputs">
+                    <input type="text" id="remText" placeholder="e.g. Broadband Bill">
+                    <input type="number" id="remDate" placeholder="Day (e.g. 25)" min="1" max="31">
+                    <button onclick="addReminder()" class="btn-add-reminder">Add</button>
+                </div>
+                <p id="remError" class="error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 8px;"></p>
+            </div>
+            <div class="reminders-list-container">
+                <h4>My Reminders</h4>
+                <ul id="reminders-list" class="reminders-list">
+                    <!-- Dynamically populated reminders -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- LOGS TAB CONTENT -->
+        <div id="drawer-logs-content" class="drawer-content" style="display: none;">
+            <!-- Dynamically populated transaction logs -->
+        </div>
+    </div>
+    <div id="noti-drawer-overlay" class="drawer-overlay" style="display: none;" onclick="toggleNotifications()"></div>
+
+    <script src="app.js?v=2.1.0"></script>
+</body>
+</html>

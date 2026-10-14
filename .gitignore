@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Local data
+projects.json
+projects_utf8.json
+sites.json
+sites_utf8.json
+*.class
